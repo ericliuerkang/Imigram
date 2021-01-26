@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ECE1778Assignment</string>
+    <string name="login_title">Login to your app</string>
+    <string name="default_font">sans-serif-medium</string>
+    <string name="register_title">Register</string>
+    <string name="profile_photo_prompt">Set Profile Photo</string>
+</resources>

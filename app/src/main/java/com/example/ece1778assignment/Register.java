@@ -24,6 +24,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -37,7 +38,11 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -56,6 +61,11 @@ public class Register extends AppCompatActivity {
     Bitmap photo;
     String email;
 
+    FirebaseStorage storage;
+    StorageReference storageRef;
+    StorageReference userRef;
+    String photoPath;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +76,9 @@ public class Register extends AppCompatActivity {
         Intent intent = getIntent();
 
         profilePhoto = findViewById(R.id.register_profile_photo);
+
+        storage = FirebaseStorage.getInstance();
+        storageRef = storage.getReference();
     }
 
     public void createAccount(View view) {
@@ -127,6 +140,7 @@ public class Register extends AppCompatActivity {
                             Log.d(TAG, "createUserWithEmail:success");
                             FirebaseUser user = mAuth.getCurrentUser();
                             assert user != null;
+                            userRef = storageRef.child(user.getUid());
                             saveToDB(user, userInfo);
                             updateProfile(user, username);
                             mAuth.signInWithEmailAndPassword(email, password).
@@ -167,7 +181,9 @@ public class Register extends AppCompatActivity {
     private void saveToDB(FirebaseUser user, Map<String, Object> map) {
 
         if (photo != null && map.get("profile_photo")==null) {
-            map.put("profile_photo", saveImage(photo, user.getUid()));
+            String tmpPath = saveImage(photo, user.getUid());
+            Log.d(TAG, tmpPath);
+            map.put("profile_photo", tmpPath);
         }
 
         db.collection("users").document(user.getUid())
@@ -244,52 +260,53 @@ public class Register extends AppCompatActivity {
         }
     }
 
-//    private String saveImage(Bitmap finalBitmap, String uid) {
+
+//    private String saveImage(Bitmap bitmapImage, String uid){
+//        ContextWrapper cw = new ContextWrapper(getApplicationContext());
+//        // path to /data/data/yourapp/app_data/imageDir
+//        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+//        // Create imageDir
+//        File mypath=new File(directory,uid+"profile.jpg");
 //
-//        String root = Environment.getExternalStorageDirectory().toString();
-//        File myDir = new File(root + "/"+uid);
-//        myDir.mkdirs();
-//
-//        String fname = "profile_photo"+".jpg";
-//
-//        File file = new File(myDir, fname);
-//        String path = file.getAbsolutePath();
-////        if (file.exists()) file.delete ();
+//        FileOutputStream fos = null;
 //        try {
-//            FileOutputStream out = new FileOutputStream(file);
-//            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
-//            out.flush();
-//            out.close();
-//            Log.d(TAG, "Success, file path: "+path);
+//            fos = new FileOutputStream(mypath);
+//            // Use the compress method on the BitMap object to write image to the OutputStream
+//            bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
 //        } catch (Exception e) {
-//            Log.d(TAG, "faaaaaaaaaaaaaaak"+e.toString());
 //            e.printStackTrace();
+//        } finally {
+//            try {
+//                fos.close();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
 //        }
-//        return root+"/"+uid+"/"+fname;
+//        Log.d(TAG, "Directory: "+directory.getAbsolutePath());
+//        return directory.getAbsolutePath()+"/"+uid+"profile.jpg";
 //    }
 
-    private String saveImage(Bitmap bitmapImage, String uid){
-        ContextWrapper cw = new ContextWrapper(getApplicationContext());
-        // path to /data/data/yourapp/app_data/imageDir
-        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
-        // Create imageDir
-        File mypath=new File(directory,uid+"profile.jpg");
+    private String saveImage(Bitmap image, String uid){
+        StorageReference profileRef = storageRef.child(uid+"/profile.jpg");
 
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(mypath);
-            // Use the compress method on the BitMap object to write image to the OutputStream
-            bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                fos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        image.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        byte[] data = baos.toByteArray();
+
+//        Uri path;
+
+        UploadTask uploadTask = profileRef.putBytes(data);
+        uploadTask.addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
+                Log.d(TAG, "task completed");
+                if (!task.isSuccessful()){
+                    Log.d(TAG, "task failed");
+                }
+                photoPath = uid+"/profile.jpg";
             }
-        }
-        Log.d(TAG, "Directory: "+directory.getAbsolutePath());
-        return directory.getAbsolutePath()+"/"+uid+"profile.jpg";
+        });
+        Log.d(TAG, "path: "+photoPath);
+        return uid+"/profile.jpg";
     }
 }

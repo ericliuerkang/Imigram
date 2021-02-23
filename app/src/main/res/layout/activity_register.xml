@@ -125,11 +125,13 @@
 
     <ImageView
         android:id="@+id/register_profile_photo"
-        android:layout_width="126dp"
         android:layout_height="94dp"
+        android:layout_width="0dp"
         android:layout_marginStart="32dp"
         android:layout_marginLeft="32dp"
         android:layout_marginTop="32dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/register_title"
         app:srcCompat="@drawable/anonymous_profile_photo"
